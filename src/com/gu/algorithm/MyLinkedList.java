@@ -1,6 +1,8 @@
 package com.gu.algorithm;
 
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public class MyLinkedList<AnyType> implements Iterable<AnyType> {
 	
@@ -63,15 +65,42 @@ public class MyLinkedList<AnyType> implements Iterable<AnyType> {
 	}
 	
 	private AnyType remove(Node<AnyType> p) {
-		return null;
+		p.next = p.prev.next;
+		p.prev = p.next.prev;
+		--theSize;
+		++modCount;
+		
+		return p.data;
 	}
 	
 	private Node<AnyType> getNode(int idx) {
-		return null;
+		Node<AnyType> p;
+		
+		if (idx < 0 || idx >= theSize) {
+			throw new IndexOutOfBoundsException();
+		}
+		
+		if (idx < size() / 2) {
+			p = beginMarker.next;
+			for (int i = 0; i < idx; ++i) {
+				p = p.next;
+			}
+		} else {
+			p = endMarker;
+			for (int i = theSize; i > idx; --i) {
+				p = p.prev;
+			}
+		}
+		
+		return p;
 	}
 	
 	private void addBefore(Node<AnyType> p, AnyType x) {
-		
+		Node<AnyType> newNode = new Node<AnyType> (x, p.prev, p);
+		newNode.prev.next = newNode;
+		p.prev = newNode;
+		++theSize;
+		++modCount;
 	}
 	
 	@Override
@@ -80,25 +109,45 @@ public class MyLinkedList<AnyType> implements Iterable<AnyType> {
 	}
 	
 	private class LinkedListIterator implements Iterator<AnyType> {
-
+		
+		private Node<AnyType> current = beginMarker.next;
+		private int expectedModCount = modCount;
+		private boolean okToRemove = false;		
+		
 		@Override
 		public boolean hasNext() {
-			// TODO Auto-generated method stub
-			return false;
+			return current != endMarker;
 		}
 
 		@Override
 		public AnyType next() {
-			// TODO Auto-generated method stub
-			return null;
+			if (modCount != expectedModCount) {
+				throw new ConcurrentModificationException();
+			}
+			
+			if (!hasNext()) {
+				throw new NoSuchElementException();
+			}
+			
+			AnyType nextItem = current.data;
+			current = current.next;
+			okToRemove = true;
+			return nextItem;
 		}
 
 		@Override
 		public void remove() {
-			// TODO Auto-generated method stub
+			if (modCount != expectedModCount) {
+				throw new ConcurrentModificationException();
+			}
 			
-		}
-		
+			if (!okToRemove) {
+				throw new IllegalStateException();
+			}
+			
+			MyLinkedList.this.remove(current.prev);
+			okToRemove = false;
+			++expectedModCount;
+		}	
 	}
-
 }
